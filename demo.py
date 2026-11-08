@@ -1,6 +1,10 @@
 
 # Part 1 demo 
 
+import copy
+import json
+import os
+import tempfile
 from datetime import date, datetime
 
 from models import (
@@ -12,15 +16,20 @@ from models import (
     InsufficientOccupancyError,
     InvalidCapacityError,
     InvalidDateError,
+    InvalidSaveDataError,
     UnknownPetTypeError,
     ReservationAlreadyCancelledError,
     ReservationNotFoundError,
+    SaveFileError,
 )
 from services import BookingService
 
 # Fixed demo inputs: November 2026
 CHECK_IN = date(2026, 11, 10)
 CHECK_OUT = date(2026, 11, 12)   # check-out excluded
+
+# JSON file written by Anita's demo, next to this script
+SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "petstay_data.json")
 
 
 def _check(name, passed):
@@ -347,11 +356,160 @@ def demo_yizhen():
 
     print()
 
+
+def _raises(error_type, operation):
+    """Run operation; return the error message if it raised error_type, else None."""
+    try:
+        operation()
+    except error_type as error:
+        return str(error)
+    return None
+
+
+def demo_anita():
+    print("== Anita: saving and loading ==")
+    second_night = date(2026, 11, 11)
+
+    # Build a state with active and cancelled bookings in both areas
+    service = BookingService([CatArea(2), DogArea(1)])
+    milo_id = service.create_reservation("owner-1", "pet-1", "Milo", "dog", CHECK_IN, CHECK_OUT)
+    luna_id = service.create_reservation("owner-2", "pet-2", "Luna", "cat", CHECK_IN, CHECK_OUT)
+    kiki_id = service.create_reservation("owner-3", "pet-3", "Kiki", "cat", CHECK_IN, second_night)
+    service.cancel_reservation(kiki_id)
+
+    service.save(SAVE_FILE)
+    print(f"  saved to {os.path.basename(SAVE_FILE)}")
+    with open(SAVE_FILE, encoding="utf-8") as file:
+        saved = json.load(file)
+
+    _check("saved file stores area kinds, capacities and occupancy",
+           [(a["kind"], a["capacity"]) for a in saved["areas"]] == [("cat", 2), ("dog", 1)]
+           and saved["areas"][1]["occupancy"] == {"2026-11-10": 1, "2026-11-11": 1})
+    _check("saved file stores dates as YYYY-MM-DD text and keeps the status",
+           saved["reservations"][2]["check_in"] == "2026-11-10"
+           and saved["reservations"][2]["status"] == "cancelled")
+
+    # A9: save then load
+    loaded = BookingService.load(SAVE_FILE)
+    _check("A9: booking IDs, fields and statuses match after loading",
+           loaded.reservations_snapshot() == service.reservations_snapshot())
+    _check("A9: capacity and nightly occupancy match after loading",
+           loaded.to_dict() == service.to_dict())
+    _check("A9: availability matches for both pet types",
+           all(loaded.availability(pet, CHECK_IN, CHECK_OUT)
+               == service.availability(pet, CHECK_IN, CHECK_OUT) for pet in ["cat", "dog"]))
+    _check("A9: saved kind restores the concrete subclass",
+           type(BoardingArea.from_dict(saved["areas"][0])) is CatArea
+           and type(BoardingArea.from_dict(saved["areas"][1])) is DogArea)
+    _check("cancelled reservation still occupies nothing after loading",
+           loaded.availability("cat", CHECK_IN, CHECK_OUT)
+           == {"2026-11-10": 1, "2026-11-11": 1})
+
+    before = loaded.to_dict()
+    _check("cancelling a loaded cancelled reservation is still rejected",
+           _raises(ReservationAlreadyCancelledError,
+                   lambda: loaded.cancel_reservation(kiki_id)) is not None)
+    _check("rejected cancellation leaves the loaded state unchanged", loaded.to_dict() == before)
+
+    # A10: keep booking and cancelling on the loaded service
+    old_ids = set(loaded.reservations_snapshot())
+    bella_id = loaded.create_reservation("owner-4", "pet-4", "Bella", "cat", CHECK_IN, CHECK_OUT)
+    _check("A10: a new booking after loading gets a new unique ID",
+           bella_id not in old_ids and len(loaded.reservations_snapshot()) == 4)
+    _check("A10: the new booking takes the last cat place",
+           loaded.availability("cat", CHECK_IN, CHECK_OUT) == {"2026-11-10": 0, "2026-11-11": 0})
+
+    before = loaded.to_dict()
+    _check("A10: duplicate check still works for a loaded pet",
+           _raises(DuplicateReservationError, lambda: loaded.create_reservation(
+               "owner-1", "pet-1", "Milo", "dog", second_night, date(2026, 11, 13))) is not None)
+    _check("A10: capacity check still works for a loaded area",
+           _raises(AreaFullError, lambda: loaded.create_reservation(
+               "owner-5", "pet-5", "Coco", "dog", CHECK_IN, CHECK_OUT)) is not None)
+    _check("A10: rejected bookings leave the loaded state unchanged", loaded.to_dict() == before)
+
+    loaded.cancel_reservation(milo_id)
+    _check("A10: cancelling a loaded active booking frees both nights",
+           loaded.availability("dog", CHECK_IN, CHECK_OUT) == {"2026-11-10": 1, "2026-11-11": 1})
+    _check("A10: the loaded copy is independent of the original service",
+           service.to_dict() == saved)
+
+    reloaded_file = SAVE_FILE + ".second"
+    loaded.save(reloaded_file)
+    _check("A10: a second save and load round trip keeps the state",
+           BookingService.load(reloaded_file).to_dict() == loaded.to_dict())
+    os.remove(reloaded_file)
+
+    # A15 and other invalid save data: each tampered copy must be refused
+    def tampered(change):
+        data = copy.deepcopy(saved)
+        change(data)
+        return data
+
+    def set_occupancy(kind_index, night, count):
+        return lambda data: data["areas"][kind_index]["occupancy"].__setitem__(night, count)
+
+    def reactivate_kiki_as_luna(data):
+        # Kiki's record becomes a second active stay for Luna (pet-2); the cat
+        # occupancy is raised to match, so only the overlap rule is broken
+        data["reservations"][2].update(pet_id="pet-2", status="active")
+        data["areas"][0]["occupancy"]["2026-11-10"] = 2
+
+    bad_cases = [
+        ("A15: occupancy lower than the active bookings", tampered(set_occupancy(1, "2026-11-10", 0))),
+        ("A15: cancelled booking still counted in occupancy", tampered(set_occupancy(0, "2026-11-10", 2))),
+        ("A15: occupancy on a night with no booking", tampered(set_occupancy(1, "2026-11-20", 1))),
+        ("occupancy above capacity", tampered(set_occupancy(1, "2026-11-10", 2))),
+        ("duplicate booking ID", tampered(lambda d: d["reservations"][2].update(booking_id=luna_id))),
+        ("overlapping active bookings for one pet", tampered(reactivate_kiki_as_luna)),
+        ("unknown area kind", tampered(lambda d: d["areas"][0].update(kind="bird"))),
+        ("invalid capacity", tampered(lambda d: d["areas"][0].update(capacity=-1))),
+        ("invalid date", tampered(lambda d: d["reservations"][0].update(check_in="2026-13-01"))),
+        ("check-out not after check-in",
+         tampered(lambda d: d["reservations"][0].update(check_out="2026-11-10"))),
+        ("unknown status", tampered(lambda d: d["reservations"][0].update(status="pending"))),
+        ("pet type with no area", tampered(lambda d: d["reservations"][2].update(pet_type="bird"))),
+        ("missing reservation field", tampered(lambda d: d["reservations"][0].pop("pet_name"))),
+    ]
+
+    before = loaded.to_dict()
+    with tempfile.TemporaryDirectory() as folder:
+        bad_file = os.path.join(folder, "bad.json")
+        for label, data in bad_cases:
+            with open(bad_file, "w", encoding="utf-8") as file:
+                json.dump(data, file)
+            message = _raises(InvalidSaveDataError, lambda: BookingService.load(bad_file))
+            _check(f"load rejected: {label}", message is not None)
+            if label.startswith("A15"):
+                print(f"         reason: {message}")
+
+        with open(bad_file, "w", encoding="utf-8") as file:
+            file.write("{ this is not json")
+        _check("load rejected: file is not JSON",
+               _raises(InvalidSaveDataError, lambda: BookingService.load(bad_file)) is not None)
+
+        _check("load rejected: missing file raises SaveFileError",
+               _raises(SaveFileError, lambda: BookingService.load(
+                   os.path.join(folder, "missing.json"))) is not None)
+
+        # Saving onto a folder fails at the final replace step
+        target = os.path.join(folder, "a-folder")
+        os.mkdir(target)
+        _check("failed save raises SaveFileError",
+               _raises(SaveFileError, lambda: loaded.save(target)) is not None)
+        _check("failed save leaves no temporary file behind",
+               sorted(os.listdir(folder)) == ["a-folder", "bad.json"])
+
+    _check("failed loads and saves leave the current service unchanged",
+           loaded.to_dict() == before)
+    print()
+
+
 def main():
     demo_xinyi()
     demo_kyrie()
     demo_yizhen()
-    # Anita: demo_Anita() - save, load, and verification after restore
+    demo_anita()
     print("All demos: all checks passed.")
 
 
