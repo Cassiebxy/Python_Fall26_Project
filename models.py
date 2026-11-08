@@ -42,8 +42,14 @@ class DuplicateReservationError(BookingError):
     """The same pet already has an active reservation for overlapping nights."""
 
 
-# --- Yizheng adds cancellation errors here (missing ID, double cancel) ---
+# --- Part 3: reservation cancellation ---
 
+class ReservationNotFoundError(BookingError):
+    """No reservation exists for the supplied booking ID."""
+
+
+class ReservationAlreadyCancelledError(BookingError):
+    """The reservation has already been cancelled."""
 
 # Date helper (provided by Xinyi; shared by query, reserve and release)
 

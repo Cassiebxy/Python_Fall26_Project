@@ -13,6 +13,8 @@ from models import (
     InvalidCapacityError,
     InvalidDateError,
     UnknownPetTypeError,
+    ReservationAlreadyCancelledError,
+    ReservationNotFoundError,
 )
 from services import BookingService
 
@@ -270,13 +272,87 @@ def demo_kyrie():
     )
     print()
 
+def demo_yizhen():
+    print("== Yizhen: reservation cancellation ==")
+
+    dog = DogArea(1)
+    service = BookingService([dog])
+
+    booking_id = service.create_reservation(
+        "owner-1",
+        "pet-1",
+        "Milo",
+        "dog",
+        CHECK_IN,
+        CHECK_OUT,
+    )
+
+    service.cancel_reservation(booking_id)
+
+    records = service.reservations_snapshot()
+    _check(
+        "A5: cancelled reservation is retained with cancelled status",
+        records[booking_id].status == "cancelled",
+    )
+    _check(
+        "A5: both nights become available again",
+        service.availability("dog", CHECK_IN, CHECK_OUT)
+        == {"2026-11-10": 1, "2026-11-11": 1},
+    )
+
+    records_before = service.reservations_snapshot()
+    area_before = dog.to_dict()
+
+    try:
+        service.cancel_reservation(booking_id)
+        rejected = False
+    except ReservationAlreadyCancelledError:
+        rejected = True
+
+    _check("A6: cancelling the same reservation twice is rejected", rejected)
+    _check(
+        "A6: repeated cancellation does not change records or occupancy",
+        service.reservations_snapshot() == records_before
+        and dog.to_dict() == area_before,
+    )
+
+    try:
+        service.cancel_reservation("missing-booking-id")
+        rejected = False
+    except ReservationNotFoundError:
+        rejected = True
+
+    _check("A7: an unknown booking ID is rejected", rejected)
+    _check(
+        "A7: unknown ID does not change records or occupancy",
+        service.reservations_snapshot() == records_before
+        and dog.to_dict() == area_before,
+    )
+
+    new_booking_id = service.create_reservation(
+        "owner-1",
+        "pet-1",
+        "Milo",
+        "dog",
+        CHECK_IN,
+        CHECK_OUT,
+    )
+
+    new_records = service.reservations_snapshot()
+    _check(
+        "A14: the same pet can rebook the dates after cancellation",
+        new_booking_id != booking_id
+        and new_records[new_booking_id].status == "active",
+    )
+
+    print()
 
 def main():
     demo_xinyi()
     demo_kyrie()
-    # Yizheng: demo_yizheng() - cancel, double-cancel rejection, restored availability
+    demo_yizhen()
     # Anita: demo_Anita() - save, load, and verification after restore
-    print("Xinyi demo: all checks passed.")
+    print("All demos: all checks passed.")
 
 
 if __name__ == "__main__":

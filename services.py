@@ -10,6 +10,8 @@ from models import (
     InvalidDateError,
     InvalidReservationError,
     Reservation,
+    ReservationAlreadyCancelledError,
+    ReservationNotFoundError,
     UnknownPetTypeError,
     stay_nights,
 )
@@ -114,6 +116,32 @@ class BookingService:
         area.reserve(check_in, check_out)
         self._reservations[booking_id] = reservation
         return booking_id
+
+    def cancel_reservation(self, booking_id):
+        """Cancel one active reservation and release all of its nights."""
+
+        reservation = self._reservations.get(booking_id)
+
+        if reservation is None:
+            raise ReservationNotFoundError(
+                f"reservation {booking_id!r} was not found"
+            )
+
+        if reservation.status == "cancelled":
+            raise ReservationAlreadyCancelledError(
+                f"reservation {booking_id!r} has already been cancelled"
+            )
+
+        for area in self._areas:
+            if area.accepts(reservation.pet_type):
+                break
+        else:
+            raise UnknownPetTypeError(
+                f"no boarding area accepts pet type {reservation.pet_type!r}"
+            )
+
+        area.release(reservation.check_in, reservation.check_out)
+        reservation.status = "cancelled"        
 
     def reservations_snapshot(self):
         """Return copies of the reservation records keyed by booking ID."""
