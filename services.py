@@ -45,7 +45,7 @@ class BookingService:
 
     Xinyi __init__ and availability
     Kyrie create_reservation 
-    Yizheng cancel_reservation
+    Yizhen cancel_reservation
     Anita to_dict, save, from_dict, load
     """
 
@@ -58,6 +58,7 @@ class BookingService:
         """Add a boarding area"""
         self._areas.append(area)
 
+    # AI assistance: OpenAI Codex helped implement
     def availability(self, pet_type, check_in, check_out):
         """pet type plus check-in/check-out dates
         1) return the places left on each night
@@ -270,3 +271,4 @@ class BookingService:
         service = cls(areas)
         service._reservations = reservations
         return service
+
