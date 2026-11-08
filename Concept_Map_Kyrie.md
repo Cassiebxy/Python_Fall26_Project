@@ -9,7 +9,7 @@ Member 2 implemented the reservation record and creation flow. Yizhen can merge 
 | Polymorphism | `services.py:78-124` (`BookingService.create_reservation`) | The service finds the right area through `accepts()` and calls `reserve()` through the common boarding-area interface. |
 | Encapsulated state changes | `services.py:78-124` (`BookingService.create_reservation`), `models.py:147-163` (`BoardingArea.reserve`) | Creation checks overlapping stays before calling `reserve()`, which checks all nights before updating occupancy. The service stores the record only after `reserve()` succeeds. |
 | Custom exceptions | `models.py:38-39` (`InvalidReservationError`), `models.py:42-43` (`DuplicateReservationError`), `services.py:78-124` (`BookingService.create_reservation`) | Invalid reservation fields and overlapping stays raise distinct `BookingError` subclasses so callers can handle each reason. Date, pet type, and capacity errors use the existing team exceptions. |
-| Runnable demo | `demo.py:210-283` (`demo_kyrie`) | The demo covers A3, A4, A8, A11, A12, and A13 through `BookingService`. Rejected bookings compare both reservation records and occupancy against a snapshot. |
+| Runnable demo | `demo.py:205-278` (`demo_kyrie`) | The demo covers A3, A4, A8, A11, A12, and A13 through `BookingService`. Rejected bookings compare both reservation records and occupancy against a snapshot. |
 
 Run `python3 -B demo.py` from the project directory to run the demo.
 
