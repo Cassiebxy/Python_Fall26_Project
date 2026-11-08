@@ -25,6 +25,7 @@ Open a terminal in the project directory and run:
 ```bash
 python demo.py
 ```
+
 ## Business Rules
 
 1. Cats and dogs use separate boarding areas and separate capacity pools.
