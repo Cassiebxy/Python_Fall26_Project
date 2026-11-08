@@ -54,56 +54,56 @@ The stay interval follows the convention:
 
 ## Concept Map
 
-> Line numbers will be verified after all four members' code is integrated.
+Line numbers refer to the integrated code.
 
 ### Member 1 — Xinyi
 
 | Course concept | Code location (file:line) | Why it is used this way |
 |---|---|---|
-| Plain class, object attributes | `models.py:69-83` (`BoardingArea.__init__` at 76-83; per-instance `_occupancy` dict at 83) | Each area object keeps its own capacity and per-night count dict; creating the dict per instance keeps cat and dog areas independent |
-| Encapsulation: check before modifying | `models.py:106-122` (`reserve`), `models.py:124-140` (`release`) | Two plain loops: the first checks every night, the second only then modifies; a failure raises before any data changes, so no partial booking survives; outside code never touches `_occupancy` |
-| Abstract class and inheritance | `models.py:69` (`class BoardingArea(ABC)`), `models.py:85-88` (`@abstractmethod accepts`), subclasses at `models.py:157-163` (`CatArea`) and `models.py:166-172` (`DogArea`) | Cat and dog areas are both boarding areas, so shared capacity/occupancy rules live in the parent; subclasses only declare `kind` and their own acceptance rule; Python refuses to instantiate the ABC (demo check "abstract class cannot be instantiated") |
-| Polymorphism | `services.py:53-55` (service picks an area via `area.accepts(pet_type)`), `demo.py:40-47` (same loop over `[CatArea(2), DogArea(2)]`) | Call sites use one shared interface instead of `isinstance` or subclass-name branches; the per-subclass rule `pet_type == "cat"` stays inside each subclass |
-| Custom business exceptions | Hierarchy at `models.py:10-32` (base `BookingError`); raises at `models.py:44, 55, 79, 116, 134` and `services.py:20-24, 57`; caught in `demo.py:90, 112, 124, 129, 142, 150, 171, 189` | Named errors (invalid capacity / invalid date / area full / insufficient occupancy / unknown pet type) explain the failure reason and reject before data is modified; one shared module prevents same-name-different-class collisions between members |
-| Plain data conversion, data copy | `models.py:142-151` (`to_dict` returns `kind`, `capacity`, and `dict(self._occupancy)` copy) | Anita gets JSON-serializable data without access to the internal dict; mutating the returned copy cannot corrupt the area (demo check "copy isolation") |
-| Strict date validation (project addition) | `models.py:41-44` (`type(value) is not date`), `services.py:13` (`type(value) is date`) | `datetime` passes `isinstance(value, date)` and its `isoformat()` carries a time, which would create a second occupancy key for the same night and allow overbooking; strict type checks route timed input to `InvalidDateError` (demo checks at `demo.py:175-192`) |
+| Plain class, object attributes | `models.py:117-124` (`BoardingArea.__init__`) | Each area object keeps its own capacity and per-night count dict; creating the dict per instance keeps cat and dog areas independent |
+| Encapsulation: check before modifying | `models.py:147-163` (`BoardingArea.reserve`), `models.py:165-181` (`BoardingArea.release`) | Two plain loops: the first checks every night, the second only then modifies; a failure raises before any data changes, so no partial booking survives; outside code never touches `_occupancy` |
+| Abstract class and inheritance | `models.py:126-129` (`BoardingArea.accepts`), `models.py:234-240` (`CatArea`), `models.py:243-249` (`DogArea`) | Cat and dog areas are both boarding areas, so shared capacity/occupancy rules live in the parent; subclasses only declare `kind` and their own acceptance rule; Python refuses to instantiate the ABC (demo check "abstract class cannot be instantiated") |
+| Polymorphism | `services.py:62-75` (`BookingService.availability`), `demo.py:42-207` (`demo_xinyi`) | Call sites use one shared interface instead of `isinstance` or subclass-name branches; the per-subclass rule `pet_type == "cat"` stays inside each subclass |
+| Custom business exceptions | `models.py:11-12` (`BookingError`), `models.py:17-18` (`InvalidCapacityError`), `models.py:21-22` (`InvalidDateError`), `models.py:25-26` (`AreaFullError`), `models.py:29-30` (`InsufficientOccupancyError`), `models.py:33-34` (`UnknownPetTypeError`) | Named errors (invalid capacity / invalid date / area full / insufficient occupancy / unknown pet type) explain the failure reason and reject before data is modified; one shared module prevents same-name-different-class collisions between members; Yizhen (member 3) aggregates cancellation errors here |
+| Plain data conversion, data copy | `models.py:183-192` (`BoardingArea.to_dict`) | Anita gets JSON-serializable data without access to the internal dict; mutating the returned copy cannot corrupt the area (demo check "copy isolation") |
+| Strict date validation (project addition) | `models.py:67-70` (`_validate_date`), `services.py:24-40` (`_to_date`) | `datetime` passes `isinstance(value, date)` and its `isoformat()` carries a time, which would create a second occupancy key for the same night and allow overbooking; strict type checks route timed input to `InvalidDateError` (demo checks at `demo.py:175-192`) |
 
 ### Member 2 — Kyrie
 
 | Course concept | Code location (file:line) | Why it is used this way |
 |---|---|---|
-| Data class | `models.py:184–195` | `Reservation` groups a stay's booking ID, pet and owner details, dates, and status. The data class generates the initializer and lets the demo compare snapshots by value. |
-| Composition | `services.py:45–48` | `BookingService` holds the boarding areas and reservation records, so one service coordinates the nightly occupancy and booking record. |
-| Polymorphism | `services.py:84–88`, `services.py:114` | The service finds the right area through `accepts()` and calls `reserve()` through the common boarding-area interface. |
-| Encapsulated state changes | `services.py:90–116`, `models.py:115–131` | Creation checks overlapping stays before calling `reserve()`, which checks all nights before updating occupancy. The service stores the record only after `reserve()` succeeds. |
-| Custom exceptions | `models.py:37–42`, `services.py:72–97` | Invalid reservation fields and overlapping stays raise distinct `BookingError` subclasses so callers can handle each reason. Date, pet type, and capacity errors use the existing team exceptions. |
-| Runnable demo | `demo.py:198–271` | The demo covers A3, A4, A8, A11, A12, and A13 through `BookingService`. Rejected bookings compare both reservation records and occupancy against a snapshot. |
+| Data class | `models.py:256-320` (`Reservation`) | `Reservation` groups a stay's booking ID, pet and owner details, dates, and status. The data class generates the initializer and lets the demo compare snapshots by value. |
+| Composition | `services.py:52-55` (`BookingService.__init__`) | `BookingService` holds the boarding areas and reservation records, so one service coordinates the nightly occupancy and booking record. |
+| Polymorphism | `services.py:78-124` (`BookingService.create_reservation`) | The service finds the right area through `accepts()` and calls `reserve()` through the common boarding-area interface. |
+| Encapsulated state changes | `services.py:78-124` (`BookingService.create_reservation`), `models.py:147-163` (`BoardingArea.reserve`) | Creation checks overlapping stays before calling `reserve()`, which checks all nights before updating occupancy. The service stores the record only after `reserve()` succeeds. |
+| Custom exceptions | `models.py:38-39` (`InvalidReservationError`), `models.py:42-43` (`DuplicateReservationError`), `services.py:78-124` (`BookingService.create_reservation`) | Invalid reservation fields and overlapping stays raise distinct `BookingError` subclasses so callers can handle each reason. Date, pet type, and capacity errors use the existing team exceptions. |
+| Runnable demo | `demo.py:210-283` (`demo_kyrie`) | The demo covers A3, A4, A8, A11, A12, and A13 through `BookingService`. Rejected bookings compare both reservation records and occupancy against a snapshot. |
 
 
 ### Member 3 — Yizhen
 
 | Course concept | Code location (file:line) | Why it is used this way |
 |---|---|---|
-| Custom exceptions and inheritance | `models.py:47-52` | `ReservationNotFoundError` and `ReservationAlreadyCancelledError` inherit from the shared `BookingError`. They distinguish a missing booking ID from an attempt to cancel the same reservation twice. |
-| Composition | `services.py:120-144` | `BookingService` coordinates the stored `Reservation` object and the matching boarding area, so cancellation updates both the reservation status and nightly occupancy. |
-| Polymorphism | `services.py:135-141` | The cancellation method finds the correct area through the shared `accepts()` interface instead of checking whether the object is specifically a `CatArea` or `DogArea`. |
-| Encapsulated state change | `services.py:120-144` | Callers cancel through `BookingService.cancel_reservation()` rather than changing the reservation status directly. This keeps the status and occupancy synchronized. |
-| Validate before modifying | `services.py:123-144` | The method checks that the reservation exists and is still active before releasing occupancy. The area verifies all nights before modifying them, and the status changes only after release succeeds. |
-| Runnable demo | `demo.py:275-348` | The demo covers successful cancellation, repeated-cancellation rejection, missing-ID rejection, restored availability, and rebooking after cancellation through scenarios A5, A6, A7, and A14. |
+| Custom exceptions and inheritance | `models.py:48-49` (`ReservationNotFoundError`), `models.py:52-53` (`ReservationAlreadyCancelledError`) | `ReservationNotFoundError` and `ReservationAlreadyCancelledError` inherit from the shared `BookingError`. They distinguish a missing booking ID from an attempt to cancel the same reservation twice. |
+| Composition | `services.py:126-150` (`BookingService.cancel_reservation`) | `BookingService` coordinates the stored `Reservation` object and the matching boarding area, so cancellation updates both the reservation status and nightly occupancy. |
+| Polymorphism | `services.py:126-150` (`BookingService.cancel_reservation`) | The cancellation method finds the correct area through the shared `accepts()` interface instead of checking whether the object is specifically a `CatArea` or `DogArea`. |
+| Encapsulated state change | `services.py:126-150` (`BookingService.cancel_reservation`) | Callers cancel through `BookingService.cancel_reservation()` rather than changing the reservation status directly. This keeps the status and occupancy synchronized. |
+| Validate before modifying | `services.py:126-150` (`BookingService.cancel_reservation`), `models.py:165-181` (`BoardingArea.release`) | The method checks that the reservation exists and is still active before releasing occupancy. The area verifies all nights before modifying them, and the status changes only after release succeeds. |
+| Runnable demo | `demo.py:285-358` (`demo_yizhen`) | The demo covers successful cancellation, repeated-cancellation rejection, missing-ID rejection, restored availability, and rebooking after cancellation through scenarios A5, A6, A7, and A14. |
 
 ### Member 4 — Anita
 
 | Course concept | Code location (file:line) | Why it is used this way |
 |---|---|---|
-| Custom exceptions and inheritance | `models.py:55-62` (`SaveFileError`, `InvalidSaveDataError`); raised in `services.py:188, 199, 201` | Both inherit from the shared `BookingError`. `SaveFileError` means the file itself cannot be read or written; `InvalidSaveDataError` means the content is not JSON or breaks a business rule. The demo catches each one by name. |
-| Exception handling and chaining | `services.py:183-188` (save), `services.py:195-201` (load), `models.py:210-213` | Low-level `OSError` and `ValueError` are caught and re-raised as team exceptions with `raise ... from error`, so callers handle one business error while the original cause stays visible. A bad capacity on load reuses Xinyi's constructor check and is turned into `InvalidSaveDataError`. |
-| File I/O with context managers | `services.py:180-182`, `services.py:196-197` | `with open(...)` closes the file even when writing or parsing fails. Saving writes to a temporary file and only then calls `os.replace`, so a failed save never leaves a half-written file where the previous save was. |
-| Data conversion for JSON | `models.py:274-285` (`Reservation.to_dict`), `models.py:73-86` (`_parse_saved_date`), `services.py:162-169` (`BookingService.to_dict`) | JSON has no date type, so dates are written as `YYYY-MM-DD` text and parsed back into `date` objects. Only the exact `isoformat()` form is accepted, so a string such as `20261110` cannot create a second key for the same night. |
-| Class methods as restore constructors | `models.py:196-229` (`BoardingArea.from_dict`), `models.py:287-321` (`Reservation.from_dict`), `services.py:190-202` (`load`), `services.py:204-274` (`from_dict`) | Each class rebuilds its own objects, so `_occupancy` and `_reservations` are only set inside their own class and outside code never edits internal collections. `load` returns a new service, so an existing service is never changed by loading. |
-| Inheritance and polymorphism on restore | `models.py:207` with `AREA_CLASSES` at `models.py:254`; `services.py:228-237` | The saved `kind` selects `CatArea` or `DogArea`. Each reservation is matched to its area through `accepts()`, the same way `create_reservation` picks an area, instead of comparing class names. |
-| Validate before modifying (load consistency) | `services.py:216-269` (checks 1–4), service built only at `services.py:272-274` | Areas, record fields, unique booking IDs, accepted pet types, same-pet overlap and nightly occupancy are all checked on local variables first. Check 4 (`services.py:251-269`) requires every night's saved count to equal the number of active reservations covering it (business rule 14, scenario A15). |
-| Data copy | `models.py:228`, `services.py:162-169` | The loaded occupancy is stored as a copy, so changing the input dict afterwards cannot change the restored area. Saving uses the existing `to_dict()` copies and never reads the internal dicts directly. |
-| Runnable demo | `demo.py:370-506` (A9 at 393-413, A10 at 415-442, A15 and other rejected files at 444-506) | The demo saves `petstay_data.json`, loads it, compares records, occupancy and availability, then keeps booking and cancelling on the loaded service. Thirteen tampered files plus a non-JSON file, a missing file and a failed save are each rejected with a specific exception and leave the current service unchanged. |
+| Custom exceptions and inheritance | `models.py:58-59` (`SaveFileError`), `models.py:62-63` (`InvalidSaveDataError`), `services.py:170-187` (`BookingService.save`), `services.py:189-201` (`BookingService.load`) | Both inherit from the shared `BookingError`. `SaveFileError` means the file itself cannot be read or written; `InvalidSaveDataError` means the content is not JSON or breaks a business rule. The demo catches each one by name. |
+| Exception handling and chaining | `services.py:170-187` (`BookingService.save`), `services.py:189-201` (`BookingService.load`), `models.py:195-228` (`BoardingArea.from_dict`) | Low-level `OSError` and `ValueError` are caught and re-raised as team exceptions with `raise ... from error`, so callers handle one business error while the original cause stays visible. A bad capacity on load reuses Xinyi's constructor check and is turned into `InvalidSaveDataError`. |
+| File I/O with context managers | `services.py:170-187` (`BookingService.save`), `services.py:189-201` (`BookingService.load`) | `with open(...)` closes the file even when writing or parsing fails. Saving writes to a temporary file and only then calls `os.replace`, so a failed save never leaves a half-written file where the previous save was. |
+| Data conversion for JSON | `models.py:273-284` (`Reservation.to_dict`), `models.py:72-85` (`_parse_saved_date`), `services.py:161-168` (`BookingService.to_dict`) | JSON has no date type, so dates are written as `YYYY-MM-DD` text and parsed back into `date` objects. Only the exact `isoformat()` form is accepted, so a string such as `20261110` cannot create a second key for the same night. |
+| Class methods as restore constructors | `models.py:195-228` (`BoardingArea.from_dict`), `models.py:286-320` (`Reservation.from_dict`), `services.py:189-201` (`BookingService.load`), `services.py:203-273` (`BookingService.from_dict`) | Each class rebuilds its own objects, so `_occupancy` and `_reservations` are only set inside their own class and outside code never edits internal collections. `load` returns a new service, so an existing service is never changed by loading. |
+| Inheritance and polymorphism on restore | `models.py:195-228` (`BoardingArea.from_dict`), `services.py:203-273` (`BookingService.from_dict`) | The saved `kind` selects `CatArea` or `DogArea`. Each reservation is matched to its area through `accepts()`, the same way `create_reservation` picks an area, instead of comparing class names. |
+| Validate before modifying (load consistency) | `services.py:203-273` (`BookingService.from_dict`) | Areas, record fields, unique booking IDs, accepted pet types, same-pet overlap and nightly occupancy are all checked on local variables first. The occupancy consistency check in `BookingService.from_dict` requires every night's saved count to equal the number of active reservations covering it (scenario A15). |
+| Data copy | `models.py:195-228` (`BoardingArea.from_dict`), `services.py:161-168` (`BookingService.to_dict`) | The loaded occupancy is stored as a copy, so changing the input dict afterwards cannot change the restored area. Saving uses the existing `to_dict()` copies and never reads the internal dicts directly. |
+| Runnable demo | `demo.py:370-506` (`demo_anita`) | The demo saves `petstay_data.json`, loads it, compares records, occupancy and availability, then keeps booking and cancelling on the loaded service. Thirteen tampered files plus a non-JSON file, a missing file and a failed save are each rejected with a specific exception and leave the current service unchanged. |
 
 
 ## Demo Scenarios
@@ -115,8 +115,9 @@ The stay interval follows the convention:
 
 ## Team Contributions
 
-- **Xinyi:** Implemented `BoardingArea`, `CatArea`, `DogArea`, capacity management, occupancy updates, and availability queries.
-- **Kyrie:** Implemented the `Reservation` data class, reservation creation, input validation, duplicate-reservation checks, and unique booking IDs.
-- **Yizhen:** Implemented reservation cancellation, cancellation-related exceptions, capacity restoration, cancellation demo scenarios, and README integration.
-- **Anita:** Implemented JSON saving and loading (`BookingService.save`, `load`, `to_dict`, `from_dict`), `Reservation.to_dict`/`from_dict`, `BoardingArea.from_dict`, the load-time consistency checks, the save/load exceptions, and the A9, A10 and A15 demo scenarios. AI assistance: Claude helped implement and verify this part.
-
+| Name | Contribution |
+|---|---|
+| Xinyi | Implemented `BoardingArea`, `CatArea`, `DogArea`, capacity management, occupancy updates, and availability queries. |
+| Kyrie | Implemented the `Reservation` data class, reservation creation, input validation, duplicate-reservation checks, and unique booking IDs. |
+| Yizhen | Implemented reservation cancellation, cancellation-related exceptions, capacity restoration, cancellation demo scenarios, and README integration. |
+| Anita | Implemented JSON saving and loading (`BookingService.save`, `load`, `to_dict`, `from_dict`), `Reservation.to_dict`/`from_dict`, `BoardingArea.from_dict`, the load-time consistency checks, the save/load exceptions, and the A9, A10 and A15 demo scenarios. AI assistance: Claude helped implement and verify this part. |
