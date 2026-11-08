@@ -38,6 +38,7 @@ def _check(name, passed):
     assert passed, name
 
 
+# AI assistance: OpenAI Codex helped implement
 def demo_xinyi():
     print("== Xinyi: boarding areas and availability queries ==")
 
@@ -515,3 +516,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
