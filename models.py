@@ -51,12 +51,39 @@ class ReservationNotFoundError(BookingError):
 class ReservationAlreadyCancelledError(BookingError):
     """The reservation has already been cancelled."""
 
+
+# --- Part 4: saving and loading ---
+
+class SaveFileError(BookingError):
+    """The save file cannot be read or written (missing file, bad path, no permission)."""
+
+
+class InvalidSaveDataError(BookingError):
+    """The save file is not valid JSON, or its data breaks a business rule."""
+
+
 # Date helper (provided by Xinyi; shared by query, reserve and release)
 
 def _validate_date(value):
     """Dates must be datetime.date objects, bad types become the shared error"""
     if type(value) is not date:
         raise InvalidDateError(f"date must be a date object, got {value!r}")
+
+
+def _parse_saved_date(value, field):
+    """Turn a saved "YYYY-MM-DD" string back into a date (used only when loading).
+    Only the exact form written by isoformat() is accepted, so "20261110" or
+    "2026-11-10T12:00" cannot sneak in as a second key for the same night.
+    """
+    if not isinstance(value, str):
+        raise InvalidSaveDataError(f"{field} must be a YYYY-MM-DD string, got {value!r}")
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        raise InvalidSaveDataError(f"{field} is not a valid date: {value!r}")
+    if parsed.isoformat() != value:
+        raise InvalidSaveDataError(f"{field} must use the YYYY-MM-DD form, got {value!r}")
+    return parsed
 
 
 def stay_nights(check_in, check_out):
@@ -165,6 +192,42 @@ class BoardingArea(ABC):
             "occupancy": dict(self._occupancy),
         }
 
+    
+    @classmethod
+    def from_dict(cls, data):
+        """Rebuild an area from to_dict() output (Anita's load feature)
+        The saved kind picks the subclass, the constructor re-checks capacity,
+        and every saved night must hold 0..capacity before the copy is stored
+        """
+        if not isinstance(data, dict) or set(data) != {"kind", "capacity", "occupancy"}:
+            raise InvalidSaveDataError(
+                f"an area must have exactly kind, capacity and occupancy, got {data!r}"
+            )
+
+        area_class = AREA_CLASSES.get(data["kind"]) if isinstance(data["kind"], str) else None
+        if area_class is None:
+            raise InvalidSaveDataError(f"unknown area kind {data['kind']!r}")
+
+        try:
+            area = area_class(data["capacity"])
+        except InvalidCapacityError as error:
+            raise InvalidSaveDataError(f"{data['kind']} area: {error}") from error
+
+        occupancy = data["occupancy"]
+        if not isinstance(occupancy, dict):
+            raise InvalidSaveDataError(f"{area.kind} area occupancy must be an object")
+        for night, count in occupancy.items():
+            _parse_saved_date(night, f"{area.kind} area night")
+            if type(count) is not int or not 0 <= count <= area.capacity:
+                raise InvalidSaveDataError(
+                    f"{area.kind} area occupancy on {night} must be an int "
+                    f"from 0 to {area.capacity}, got {count!r}"
+                )
+
+        # Everything checked: store a copy so the caller's dict stays separate
+        area._occupancy = dict(occupancy)
+        return area
+
     def __repr__(self):
         return f"{type(self).__name__}(capacity={self.capacity}, occupancy={self._occupancy})"
 
@@ -187,6 +250,10 @@ class DogArea(BoardingArea):
         return pet_type == "dog"
 
 
+# Saved "kind" to area class, used by BoardingArea.from_dict when loading
+AREA_CLASSES = {CatArea.kind: CatArea, DogArea.kind: DogArea}
+
+
 @dataclass
 class Reservation:
     """Record one pet's stay using an exclusive check-out date."""
@@ -199,3 +266,56 @@ class Reservation:
     check_in: date
     check_out: date
     status: str = "active"
+
+    # --- Part 4: convert to and from JSON-ready dicts ---
+    TEXT_FIELDS = ("booking_id", "owner_id", "pet_id", "pet_name", "pet_type")
+    STATUSES = ("active", "cancelled")
+
+    def to_dict(self):
+        """JSON-ready copy of this record, dates written as "YYYY-MM-DD"."""
+        return {
+            "booking_id": self.booking_id,
+            "owner_id": self.owner_id,
+            "pet_id": self.pet_id,
+            "pet_name": self.pet_name,
+            "pet_type": self.pet_type,
+            "check_in": self.check_in.isoformat(),
+            "check_out": self.check_out.isoformat(),
+            "status": self.status,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Rebuild one record from to_dict() output, checking every field first."""
+        expected = set(cls.TEXT_FIELDS) | {"check_in", "check_out", "status"}
+        if not isinstance(data, dict) or set(data) != expected:
+            raise InvalidSaveDataError(
+                f"a reservation must have exactly the fields {sorted(expected)}, got {data!r}"
+            )
+
+        for field in cls.TEXT_FIELDS:
+            if not isinstance(data[field], str) or not data[field].strip():
+                raise InvalidSaveDataError(f"reservation {field} must be a non-empty string")
+
+        check_in = _parse_saved_date(data["check_in"], "check_in")
+        check_out = _parse_saved_date(data["check_out"], "check_out")
+        if check_out <= check_in:
+            raise InvalidSaveDataError(
+                f"reservation {data['booking_id']!r}: check-out must be after check-in"
+            )
+
+        if data["status"] not in cls.STATUSES:
+            raise InvalidSaveDataError(
+                f"reservation {data['booking_id']!r}: unknown status {data['status']!r}"
+            )
+
+        return cls(
+            booking_id=data["booking_id"],
+            owner_id=data["owner_id"],
+            pet_id=data["pet_id"],
+            pet_name=data["pet_name"],
+            pet_type=data["pet_type"],
+            check_in=check_in,
+            check_out=check_out,
+            status=data["status"],
+        )
