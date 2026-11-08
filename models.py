@@ -2,6 +2,7 @@
 """Boarding areas, shared date validation, and business exceptions."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 
@@ -32,7 +33,15 @@ class UnknownPetTypeError(BookingError):
     """No boarding area accepts this pet type"""
 
 
-# --- Kyrie adds its exceptions here (e.g. DuplicateReservationError) ---
+# --- Part 2: reservation creation ---
+class InvalidReservationError(BookingError):
+    """A required reservation field is missing or invalid."""
+
+
+class DuplicateReservationError(BookingError):
+    """The same pet already has an active reservation for overlapping nights."""
+
+
 # --- Yizheng adds cancellation errors here (missing ID, double cancel) ---
 
 
@@ -170,3 +179,17 @@ class DogArea(BoardingArea):
 
     def accepts(self, pet_type):
         return pet_type == "dog"
+
+
+@dataclass
+class Reservation:
+    """Record one pet's stay using an exclusive check-out date."""
+
+    booking_id: str
+    owner_id: str
+    pet_id: str
+    pet_name: str
+    pet_type: str
+    check_in: date
+    check_out: date
+    status: str = "active"

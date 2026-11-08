@@ -8,6 +8,7 @@ from models import (
     BoardingArea,
     CatArea,
     DogArea,
+    DuplicateReservationError,
     InsufficientOccupancyError,
     InvalidCapacityError,
     InvalidDateError,
@@ -194,9 +195,85 @@ def demo_xinyi():
     print()
 
 
+def demo_kyrie():
+    print("== Kyrie: reservation creation ==")
+    second_night = date(2026, 11, 11)
+    next_check_out = date(2026, 11, 13)
+
+    dog = DogArea(2)
+    service = BookingService([dog])
+    first_id = service.create_reservation(
+        "owner-1", "pet-1", "Milo", "dog", CHECK_IN.isoformat(), CHECK_OUT.isoformat()
+    )
+    records = service.reservations_snapshot()
+    _check(
+        "A3: one active reservation created",
+        len(records) == 1 and records[first_id].status == "active",
+    )
+    _check(
+        "A3: both nights reserved and check-out day still free",
+        service.availability("dog", CHECK_IN, next_check_out)
+        == {"2026-11-10": 1, "2026-11-11": 1, "2026-11-12": 2},
+    )
+
+    tight_dog = DogArea(1)
+    tight_service = BookingService([tight_dog])
+    tight_service.create_reservation(
+        "owner-1", "pet-1", "Milo", "dog", second_night, CHECK_OUT
+    )
+    records_before = tight_service.reservations_snapshot()
+    area_before = tight_dog.to_dict()
+    try:
+        tight_service.create_reservation("owner-2", "pet-2", "Luna", "dog", CHECK_IN, CHECK_OUT)
+        rejected = False
+    except AreaFullError:
+        rejected = True
+    _check("A4: a full second night rejects the whole stay", rejected)
+    _check(
+        "A4: records and nightly occupancy unchanged",
+        tight_service.reservations_snapshot() == records_before and tight_dog.to_dict() == area_before,
+    )
+
+    rejected_stays = [
+        ("A8: same-day stay rejected", CHECK_IN, CHECK_IN, InvalidDateError),
+        ("A8: reversed dates rejected", CHECK_OUT, CHECK_IN, InvalidDateError),
+        ("A11: identical stay rejected", CHECK_IN, CHECK_OUT, DuplicateReservationError),
+        ("A11: partially overlapping stay rejected", second_night, next_check_out, DuplicateReservationError),
+    ]
+    records_before = service.reservations_snapshot()
+    area_before = dog.to_dict()
+    for label, start, end, expected_error in rejected_stays:
+        try:
+            service.create_reservation("owner-1", "pet-1", "Milo", "dog", start, end)
+            rejected = False
+        except expected_error:
+            rejected = True
+        _check(label, rejected)
+        _check(
+            "records and nightly occupancy unchanged",
+            service.reservations_snapshot() == records_before and dog.to_dict() == area_before,
+        )
+
+    adjacent_id = service.create_reservation(
+        "owner-1", "pet-1", "Milo", "dog", CHECK_OUT, next_check_out
+    )
+    _check(
+        "A12: the same pet can check in on its previous check-out day",
+        adjacent_id != first_id and dog.remaining(CHECK_OUT) == 1,
+    )
+
+    other_id = service.create_reservation("owner-2", "pet-2", "Luna", "dog", CHECK_IN, CHECK_OUT)
+    _check(
+        "A13: a different pet can stay on the same nights when there is capacity",
+        other_id not in (first_id, adjacent_id)
+        and service.availability("dog", CHECK_IN, CHECK_OUT) == {"2026-11-10": 0, "2026-11-11": 0},
+    )
+    print()
+
+
 def main():
     demo_xinyi()
-    # Kyrie: demo_kyrie() - success, full-area rejection, duplicate rejection
+    demo_kyrie()
     # Yizheng: demo_yizheng() - cancel, double-cancel rejection, restored availability
     # Anita: demo_Anita() - save, load, and verification after restore
     print("Xinyi demo: all checks passed.")
