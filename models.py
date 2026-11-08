@@ -6,13 +6,14 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 
-# Team-wide business exceptions (Yizheng aggregate, Xinyi lists the errors first)
+# Team-wide business exceptions (Yizhen aggregate, Xinyi lists the errors first)
 
 class BookingError(Exception):
     """Common base class for all PetStay business errors."""
 
 
 # --- Part1: boarding areas and availability queries ---
+# AI assistance: OpenAI Codex helped implement
 class InvalidCapacityError(BookingError):
     """Capacity is not a non-negative integer (or is a bool)"""
 
@@ -317,3 +318,4 @@ class Reservation:
             check_out=check_out,
             status=data["status"],
         )
+
