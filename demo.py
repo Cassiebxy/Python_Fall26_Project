@@ -1,6 +1,3 @@
-
-# Part 1 demo 
-
 import copy
 import json
 import os
@@ -204,7 +201,6 @@ def demo_xinyi():
     _check("datetime rejection leaves state unchanged", date_area.to_dict() == snapshot)
 
     print()
-
 
 def demo_kyrie():
     print("== Kyrie: reservation creation ==")
