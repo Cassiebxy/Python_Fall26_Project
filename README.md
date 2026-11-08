@@ -111,11 +111,12 @@ The stay interval follows the convention:
 - **Member 1 — Xinyi:** Demonstrates cat and dog area initialization, availability queries, capacity limits, and failed operations that leave no partial changes.
 - **Member 2 — Kyrie:** Demonstrates successful reservation creation, full-capacity rejection, invalid-date rejection, overlapping-reservation rejection, and valid adjacent reservations.
 - **Member 3 — Yizhen:** Demonstrates successful cancellation, restored availability, repeated-cancellation rejection, unknown-booking rejection, and rebooking after cancellation.
-- **Member 4 — Anita:** 
+- **Member 4 — Anita:** Demonstrates saving to `petstay_data.json` and loading it back (A9: same capacities, booking IDs, statuses and availability, with `CatArea`/`DogArea` restored), continued booking and cancelling on the loaded service (A10: new IDs stay unique, duplicate and capacity checks still work, cancelled bookings occupy nothing and cannot be cancelled again), and rejection of invalid files (A15: occupancy that does not match the active bookings, plus duplicate IDs, overlapping stays, bad dates, capacities, kinds, statuses, non-JSON and missing files), each leaving the current service unchanged.
 
 ## Team Contributions
 
 - **Xinyi:** Implemented `BoardingArea`, `CatArea`, `DogArea`, capacity management, occupancy updates, and availability queries.
 - **Kyrie:** Implemented the `Reservation` data class, reservation creation, input validation, duplicate-reservation checks, and unique booking IDs.
 - **Yizhen:** Implemented reservation cancellation, cancellation-related exceptions, capacity restoration, cancellation demo scenarios, and README integration.
-- **Anita:** 
+- **Anita:** Implemented JSON saving and loading (`BookingService.save`, `load`, `to_dict`, `from_dict`), `Reservation.to_dict`/`from_dict`, `BoardingArea.from_dict`, the load-time consistency checks, the save/load exceptions, and the A9, A10 and A15 demo scenarios. AI assistance: Claude helped implement and verify this part.
+
