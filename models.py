@@ -52,7 +52,7 @@ class ReservationAlreadyCancelledError(BookingError):
     """The reservation has already been cancelled."""
 
 
-# --- Part 4: saving and loading ---
+# --- Part 4 (Anita): saving and loading ---
 
 class SaveFileError(BookingError):
     """The save file cannot be read or written (missing file, bad path, no permission)."""
@@ -61,14 +61,12 @@ class SaveFileError(BookingError):
 class InvalidSaveDataError(BookingError):
     """The save file is not valid JSON, or its data breaks a business rule."""
 
-
 # Date helper (provided by Xinyi; shared by query, reserve and release)
 
 def _validate_date(value):
     """Dates must be datetime.date objects, bad types become the shared error"""
     if type(value) is not date:
         raise InvalidDateError(f"date must be a date object, got {value!r}")
-
 
 def _parse_saved_date(value, field):
     """Turn a saved "YYYY-MM-DD" string back into a date (used only when loading).
@@ -267,7 +265,7 @@ class Reservation:
     check_out: date
     status: str = "active"
 
-    # --- Part 4: convert to and from JSON-ready dicts ---
+    # --- Part 4: convert to and from JSON-ready dictionaries ---
     TEXT_FIELDS = ("booking_id", "owner_id", "pet_id", "pet_name", "pet_type")
     STATUSES = ("active", "cancelled")
 
