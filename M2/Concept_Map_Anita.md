@@ -2,7 +2,7 @@
 
 Line numbers refer to the current `state.py`, `demo_state.py`, and the M2 copies of `services.py` and `server.py`.
 
-Handoff note: Yizhen merges this table into README.md after integration.
+
 
 | Course concept | Code location (file:line) | Why it is used this way |
 |---|---|---|
@@ -26,10 +26,6 @@ state.cancel(booking_id)                                     # returns None
 - Read `state.service` again for each request, because `book()` and `cancel()` replace it.
 - Never call `state.service.create_reservation` or `cancel_reservation` directly; those changes would not be saved.
 - Catch `SaveFileError` **before** `BookingError`. `SaveFileError` is a subclass of `BookingError`, so catching `BookingError` first would send the file error text instead of `save failed`.
-
-## Note for the server (Xinyi)
-
-`load_state()` raises `SaveFileError` or `InvalidSaveDataError` when the save file is unreadable or inconsistent. `server.main` could catch `BookingError` around `load_state()` and print a short message, such as "cannot start: <reason>", instead of a traceback.
 
 ## Running
 
