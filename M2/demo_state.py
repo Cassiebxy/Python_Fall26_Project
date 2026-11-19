@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 
+
 from models import (
     AreaFullError,
     DuplicateReservationError,
@@ -17,8 +18,7 @@ from models import (
 from services import BookingService
 from state import CAT_CAPACITY, DOG_CAPACITY, load_state
 
-# Anita: state, save and restart checks
-# AI assistance: Claude helped implement and verify.
+# Anita: state, save and restart check
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEC_1, DEC_2, DEC_3, DEC_5 = "2026-12-01", "2026-12-02", "2026-12-03", "2026-12-05"
@@ -187,6 +187,7 @@ def demo_anita_state():
 def main():
     demo_anita_state()
     print("Anita state checks: all passed.")
+
 
 
 if __name__ == "__main__":
