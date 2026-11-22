@@ -11,4 +11,4 @@ Handoff note: Yizhen merges this table into README.md after integration.
 | Connection error handling | `server.py:28-34` (`serve`), `demo_server.py:34` (`framing_demo`) | A connection error ends the current client session and the listening socket can accept another client. The framing demo verifies that a new client can connect after the previous client closes with an incomplete request. |
 | Separation of networking and application logic | `server.py:17-18` (`handle`), `server.py:37-42` (`main`) | The server loads shared state once and passes it to the request handler for each client. The protocol functions handle request parsing and reply serialization. The same network code can run with echo functions during the demo. |
 
-Contribution: Xinyi implemented the TCP server, newline framing, connection handling, and server demos. The framing checks passed over TCP. The availability and invalid-JSON checks in `query_demo` are ready for integration with the protocol and state modules.
+Contribution: Xinyi implemented the TCP server, newline framing, connection handling, and server demos. Both framing and query checks passed over TCP.
