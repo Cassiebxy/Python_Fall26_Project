@@ -5,6 +5,8 @@ import json
 import socket
 import sys
 
+from protocol import decode_message, encode_message
+
 
 SERVER_ADDRESS = ("127.0.0.1", 5050)
 TIMEOUT = 5
@@ -38,7 +40,7 @@ def parse_request():
 
 def exchange(request):
     """Send one UTF-8 JSON line and read one complete reply."""
-    message = (json.dumps(request, ensure_ascii=False) + "\n").encode("utf-8")
+    message = encode_message(request)
 
     with socket.create_connection(SERVER_ADDRESS, timeout=TIMEOUT) as conn:
         conn.sendall(message)
@@ -48,9 +50,9 @@ def exchange(request):
     if not line.endswith(b"\n"):
         raise ConnectionError("The server closed the connection before a complete reply.")
 
-    reply = json.loads(line.decode("utf-8"))
-    if not isinstance(reply, dict) or type(reply.get("ok")) is not bool:
-        raise ValueError("The response must be a JSON object with a boolean 'ok' field.")
+    reply = decode_message(line)
+    if type(reply.get("ok")) is not bool:
+        raise ValueError("The response must include a boolean 'ok' field.")
 
     return reply
 
