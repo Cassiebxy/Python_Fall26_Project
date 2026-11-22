@@ -96,7 +96,7 @@ Code locations refer to files inside `M2`.
 
 | Contributor | Contribution |
 |---|---|
-| Xinyi | TCP server, message framing, connection handling, and server demos. |
+| Xinyi | TCP server, message framing, connection handling, and server demos. OpenAI Codex helped implement and verify this work. |
 | Anita | Server-owned state, persistence, and restart and failure demos. |
-| Yizhen | Command-line client, client demos, and README and concept-map consolidation. |
+| Yizhen | Command-line client, client demos, and README and concept-map consolidation. OpenAI Codex helped implement and verify this work. |
 | Kyrie | Network protocol, shared JSON codecs, request dispatch, error responses, protocol demo, and protocol documentation. OpenAI Codex helped implement and verify this work. |
