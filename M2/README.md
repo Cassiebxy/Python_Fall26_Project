@@ -78,10 +78,10 @@ Code locations refer to files inside `M2`.
 | Contributor | Course concept | Code location | Why it is used |
 |---|---|---|---|
 | Xinyi | TCP server and connection lifecycle | `server.py:21-34` | The listening socket accepts clients and handles each on a separate connection. A connection error ends that session so the server can accept another client. |
-| Xinyi | TCP message framing | `server.py:10-18`, `demo_server.py:34-54` | Reading one line at a time handles requests split across writes and multiple requests sent in one write. |
+| Xinyi | TCP message framing | `server.py:10-18`, `demo_server.py:34-53` | Reading one line at a time handles requests split across writes and multiple requests sent in one write. |
 | Xinyi | Separation of networking and request handling | `server.py:10-18`, `server.py:37-42` | The server forwards complete requests to a handler. The framing demo can use the same server code with an echo handler. |
-| Anita | Server-owned shared state | `state.py:19-67`, `state.py:69-83`, `server.py:41-42` | The server loads one state object and reuses it across connections, so clients see the same availability. |
-| Anita | Persistence and JSON conversion | `state.py:59-67`, `services.py:161-202` | The state uses M1 serialization to make an independent copy and saves the copy before making it current. |
+| Anita | Server-owned shared state | `state.py:18-66`, `state.py:69-83`, `server.py:41-42` | The server loads one state object and reuses it across connections, so clients see the same availability. |
+| Anita | Persistence and JSON conversion | `state.py:59-66`, `services.py:161-273` | The state uses M1 serialization to make an independent copy and saves the copy before making it current. |
 | Anita | Restart and failure handling | `demo_state.py:57-70`, `demo_state.py:73-184` | A separate process reloads saved data. The demo also checks that rejected bookings and failed saves preserve the previous state. |
 | Yizhen | Command-line argument parsing | `client.py:15-38` | `argparse` collects the fields for each subcommand and puts the selected operation in the request's `op` field. |
 | Yizhen | TCP client and JSON framing | `client.py:11-12`, `client.py:41-57` | The client opens a TCP connection with a timeout, sends one UTF-8 JSON line, and checks and decodes one complete reply. |
